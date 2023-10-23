@@ -14,10 +14,6 @@ class DenseLayer:
 
     def softmax(x):
         exp_scores = np.exp(x)
-
-        print('exp scores')
-        print(exp_scores)
-
         probs = exp_scores / np.sum(exp_scores, axis=0, keepdims=True)
         return probs
     
@@ -78,49 +74,23 @@ class DenseLayer:
 
 class NeuralNet:
     
-
-    # Takes in data as [samples x feature] size
-    def catCrossEntropyLossDcDa(predicted, actual):
-        num_samples = len(actual)
-
-        ## compute the gradient on predictions
-        dscores = predicted
-        dscores[range(num_samples),actual] -= 1
-        dscores /= num_samples
-
-        return dscores
     
     # Takes in data as [samples x feature] size
     # We do 1/2(y - y^) loss func
     def rmsDcDa(predicted, actual):
-        return (predicted.T - actual.T).T
+        return (np.subtract(predicted, actual))
     
 
     def _get_accuracy(self, predicted, actual):
-        """
-        Calculate accuracy after each iteration
-        """
-        return np.mean(np.argmax(predicted, axis=1)==actual)
+        count = 0
+        for r1, r2 in zip(predicted, actual):
+            if np.isclose(r1, r2).all():
+                count+=1
+        return count * 100/len(predicted)
     
 
     def rms_cost(self, ypred, y):
-        # print(f'y shape: {y.shape}')
-        # print(f'ypred share: {ypred.shape}')
         return 0.5 * np.sum(np.power((y.T - ypred.T).T, 2))
-    
-
-    def crossEntropyCost(self, predicted, actual):
-        """
-        Calculate cross-entropy loss after each iteration
-        """
-        samples = len(actual)
-        # print(f'num of samples: {samples}')
-        # print(predicted[range(samples),actual])
-        correct_logprobs = -np.log(predicted[range(samples),actual])
-        # print(f'correct_logprobs: {correct_logprobs}')
-        data_loss = np.sum(correct_logprobs)/samples
-
-        return data_loss
 
 
     def __init__(self):
@@ -141,9 +111,7 @@ class NeuralNet:
         if lossFunc == 'rms':
             self.lossFunc = NeuralNet.rmsDcDa
             self.costFunc = NeuralNet.rms_cost
-        elif lossFunc=='crossentropy':
-            self.lossFunc = NeuralNet.catCrossEntropyLossDcDa;
-            self.costFunc = NeuralNet.crossEntropyCost;
+            
 
     def addLayer(self, layer):
         self.layers.append(layer)
@@ -179,9 +147,6 @@ class NeuralNet:
         
         curDcDa = self.lossFunc(ypred, y) # (samples x num of neurons)
 
-        # print(curDcDa.shape)
-        
-
         for layerId, layer in reversed(list(enumerate(self.layers))):
 
             aPrev = self.prevAs[layerId]
@@ -189,15 +154,9 @@ class NeuralNet:
             w = self.weights[layerId]
 
             dw, db, curDcDa = layer.backprop(curDcDa, aPrev, zCur, w)
+
             self.weights[layerId] = np.subtract(w, (dw * self.learningRate))
-
-            # print(dw)
-            # print(f'bias multiplication shape: {(db * self.learningRate).shape}')
-
-            # print(f'before update bias: {(self.biases[layerId]).shape}')
             self.biases[layerId] = np.subtract(self.biases[layerId], (db * self.learningRate))
-
-            # print(f'updated bias: {(self.biases[layerId]).shape}')
 
             self.dws.append(dw)
             self.dbs.append(db)
